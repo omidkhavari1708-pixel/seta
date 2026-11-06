@@ -93,6 +93,10 @@ html[lang=fa] .shot label{text-transform:none;letter-spacing:0}
 .shot textarea{min-height:80px;resize:vertical}
 .shot select option{color:#000}
 .btns{display:flex;gap:10px;flex-wrap:wrap}
+.shot .hint{margin:0;font-size:13px;color:var(--mute)}
+.shot .via{font-size:12px;letter-spacing:.1em;text-transform:uppercase;color:var(--mute)}
+.shot .toast:empty{display:none}
+.shot .toast{color:var(--fg)}
 .btn{display:inline-flex;align-items:center;min-height:48px;padding:0 24px;border-radius:99px;border:1px solid var(--fg);font-weight:600;cursor:pointer;background:none;color:var(--fg);font-family:inherit;font-size:14px;transition:background .3s,color .3s}
 .btn:hover,.btn.solid{background:var(--fg);color:var(--bg)}
 .btn.solid:hover{background:var(--red);border-color:var(--red);color:#fff}
@@ -196,9 +200,14 @@ dialog#lb img{max-width:92vw;max-height:88vh;width:auto;height:auto;object-fit:c
     <label><span data-fa="نوع عکاسی">Type</span><select name="type">
       <option data-fa="لوک‌بوک فشن">Fashion lookbook</option><option data-fa="محصول و طبیعت بی‌جان">Product &amp; still life</option><option data-fa="پرتره‌ی ادیتوریال">Editorial portrait</option><option data-fa="برند و مهمان‌داری">Brand &amp; hospitality</option></select></label>
     <label><span data-fa="تاریخ">Date</span><input type="date" name="date"></label>
-    <label><span data-fa="محل">Location</span><input type="text" name="loc" value="Isfahan"></label>
-    <label><span data-fa="توضیح">Notes</span><textarea name="note"></textarea></label>
-    <div class="btns"><button class="btn solid" type="submit" data-fa="ارسال با ایمیل">Send by email</button><button class="btn" type="button" id="wa">WhatsApp</button></div>
+    <label><span data-fa="شهر">City</span><select name="city" id="city"></select><input type="text" name="other" id="other" hidden></label>
+    <label><span data-fa="نام">Name</span><input type="text" name="name" required autocomplete="name"></label>
+    <label><span data-fa="شماره تماس">Phone</span><input type="tel" name="phone" required inputmode="tel" autocomplete="tel" dir="ltr" placeholder="09xx xxx xxxx"></label>
+    <label><span data-fa="توضیحات">Details</span><textarea name="note" required></textarea></label>
+    <p class="hint" data-fa="اگه مورد تأیید بود، باهاتون ارتباط می‌گیریم.">If it's a fit, we'll be in touch.</p>
+    <span class="via" data-fa="ارسال از طریق">Send via</span>
+    <div class="btns"><button class="btn solid" type="button" data-ch="ig" data-fa="دایرکت">Instagram DM</button><button class="btn" type="button" data-ch="wa">WhatsApp</button><button class="btn" type="button" data-ch="sms" data-fa="پیامک">SMS</button><button class="btn" type="button" data-ch="mail" data-fa="ایمیل">Email</button></div>
+    <p class="hint toast" id="toast" role="status"></p>
   </form>
 </section>
 
@@ -231,8 +240,17 @@ dialog#lb img{max-width:92vw;max-height:88vh;width:auto;height:auto;object-fit:c
 
   // language + theme
   const nodes = [...document.querySelectorAll('[data-fa]')].map(el => ({ el, en: el.innerHTML }));
-  const lb = $('.lang'), loc = $('#shot [name=loc]');
-  const setLang = l => { const fa = l === 'fa'; html.lang = fa ? 'fa' : 'en'; html.dir = fa ? 'rtl' : 'ltr'; nodes.forEach(n => n.el.innerHTML = fa ? n.el.dataset.fa : n.en); lb.textContent = fa ? 'EN' : 'FA'; if (loc.value === 'Isfahan' || loc.value === 'اصفهان') loc.value = fa ? 'اصفهان' : 'Isfahan'; try { localStorage.setItem('lang', l); } catch (e) {} };
+  const lb = $('.lang'), city = $('#city'), other = $('#other');
+  // every city of Iran: provincial capitals + major towns; "other" opens a free field
+  const C = 'Tehran|تهران,Isfahan|اصفهان,Mashhad|مشهد,Shiraz|شیراز,Tabriz|تبریز,Karaj|کرج,Qom|قم,Ahvaz|اهواز,Kermanshah|کرمانشاه,Urmia|ارومیه,Rasht|رشت,Zahedan|زاهدان,Hamadan|همدان,Kerman|کرمان,Yazd|یزد,Ardabil|اردبیل,Bandar Abbas|بندرعباس,Arak|اراک,Zanjan|زنجان,Sanandaj|سنندج,Qazvin|قزوین,Khorramabad|خرم‌آباد,Gorgan|گرگان,Sari|ساری,Bojnurd|بجنورد,Birjand|بیرجند,Bushehr|بوشهر,Ilam|ایلام,Shahrekord|شهرکرد,Yasuj|یاسوج,Semnan|سمنان,Kashan|کاشان,Najafabad|نجف‌آباد,Shahin Shahr|شاهین‌شهر,Khomeini Shahr|خمینی‌شهر,Shahreza|شهرضا,Golpayegan|گلپایگان,Khansar|خوانسار,Naein|نائین,Ardestan|اردستان,Natanz|نطنز,Mobarakeh|مبارکه,Fuladshahr|فولادشهر,Zarrinshahr|زرین‌شهر,Falavarjan|فلاورجان,Semirom|سمیرم,Baharestan|بهارستان,Varzaneh|ورزنه,Neyshabur|نیشابور,Sabzevar|سبزوار,Torbat-e Heydarieh|تربت حیدریه,Quchan|قوچان,Kashmar|کاشمر,Abadan|آبادان,Khorramshahr|خرمشهر,Dezful|دزفول,Shushtar|شوشتر,Shush|شوش,Andimeshk|اندیمشک,Behbahan|بهبهان,Masjed Soleyman|مسجدسلیمان,Mahshahr|ماهشهر,Izeh|ایذه,Ramhormoz|رامهرمز,Maragheh|مراغه,Marand|مرند,Ahar|اهر,Jolfa|جلفا,Khoy|خوی,Mahabad|مهاباد,Miandoab|میاندوآب,Saqqez|سقز,Marivan|مریوان,Baneh|بانه,Bijar|بیجار,Malayer|ملایر,Nahavand|نهاوند,Borujerd|بروجرد,Dorud|دورود,Aligudarz|الیگودرز,Saveh|ساوه,Khomein|خمین,Mahallat|محلات,Delijan|دلیجان,Takestan|تاکستان,Abhar|ابهر,Shahrud|شاهرود,Damghan|دامغان,Garmsar|گرمسار,Varamin|ورامین,Shahriar|شهریار,Eslamshahr|اسلامشهر,Pardis|پردیس,Damavand|دماوند,Lavasan|لواسان,Rey|ری,Robat Karim|رباط‌کریم,Pakdasht|پاکدشت,Qods|قدس,Malard|ملارد,Hashtgerd|هشتگرد,Nazarabad|نظرآباد,Gonbad-e Kavus|گنبد کاووس,Bandar Torkaman|بندر ترکمن,Rafsanjan|رفسنجان,Sirjan|سیرجان,Bam|بم,Jiroft|جیرفت,Zarand|زرند,Shahr-e Babak|شهربابک,Meybod|میبد,Ardakan|اردکان,Taft|تفت,Bafq|بافق,Mehriz|مهریز,Abarkuh|ابرکوه,Marvdasht|مرودشت,Kazerun|کازرون,Jahrom|جهرم,Fasa|فسا,Lar|لار,Darab|داراب,Firuzabad|فیروزآباد,Abadeh|آباده,Eqlid|اقلید,Kish|کیش,Qeshm|قشم,Hormuz|هرمز,Bandar Lengeh|بندر لنگه,Minab|میناب,Chabahar|چابهار,Iranshahr|ایرانشهر,Saravan|سراوان,Zabol|زابل,Genaveh|گناوه,Borazjan|برازجان,Kangan|کنگان,Asaluyeh|عسلویه,Dehloran|دهلران,Tabas|طبس,Ferdows|فردوس,Qaen|قائن,Esfarayen|اسفراین,Shirvan|شیروان,Meshgin Shahr|مشگین‌شهر,Parsabad|پارس‌آباد,Sarein|سرعین,Khalkhal|خلخال,Borujen|بروجن,Farsan|فارسان,Dogonbadan|دوگنبدان,Eslamabad-e Gharb|اسلام‌آباد غرب,Kangavar|کنگاور,Paveh|پاوه,Sarpol-e Zahab|سرپل ذهاب,Babol|بابل,Amol|آمل,Qaemshahr|قائم‌شهر,Behshahr|بهشهر,Babolsar|بابلسر,Nowshahr|نوشهر,Chalus|چالوس,Ramsar|رامسر,Tonekabon|تنکابن,Lahijan|لاهیجان,Bandar Anzali|بندر انزلی,Astara|آستارا,Fuman|فومن,Masuleh|ماسوله,Talesh|تالش,Langarud|لنگرود,Rudsar|رودسر'.split(',').map(s => s.split('|'));
+  const fillCities = fa => {
+    const v = city.value || 'Isfahan', i = fa ? 1 : 0;
+    city.innerHTML = [...C].sort((a, b) => a[i].localeCompare(b[i], fa ? 'fa' : 'en')).map(c => `<option value="${c[0]}">${c[i]}</option>`).join('') + `<option value="other">${fa ? 'شهر دیگر…' : 'Other city…'}</option>`;
+    city.value = v; other.placeholder = fa ? 'اسم شهر' : 'City name';
+  };
+  city.addEventListener('change', () => { other.hidden = city.value !== 'other'; other.required = !other.hidden; if (!other.hidden) other.focus(); });
+  fillCities(false);
+  const setLang = l => { const fa = l === 'fa'; html.lang = fa ? 'fa' : 'en'; html.dir = fa ? 'rtl' : 'ltr'; nodes.forEach(n => n.el.innerHTML = fa ? n.el.dataset.fa : n.en); lb.textContent = fa ? 'EN' : 'FA'; fillCities(fa); try { localStorage.setItem('lang', l); } catch (e) {} };
   lb.addEventListener('click', () => setLang(html.lang === 'fa' ? 'en' : 'fa'));
   let t = null; try { if (localStorage.getItem('lang') === 'fa' || /[?&]fa\b/.test(location.search)) setLang('fa'); t = localStorage.getItem('theme'); } catch (e) {}
   html.dataset.theme = t || 'dark';
@@ -255,10 +273,22 @@ dialog#lb img{max-width:92vw;max-height:88vh;width:auto;height:auto;object-fit:c
   document.addEventListener('click', e => { const a = e.target.closest('.fr, .series a'); if (!a) return; e.preventDefault(); dlg.querySelector('img').src = a.getAttribute('href'); dlg.showModal(); });
   dlg.addEventListener('click', () => dlg.close());
 
-  // shot list -> email or WhatsApp
-  const msg = () => { const f = new FormData($('#shot')); return `Shoot request · ${f.get('type')}\nDate: ${f.get('date') || '-'}\nLocation: ${f.get('loc')}\n\n${f.get('note') || ''}`; };
-  $('#shot').addEventListener('submit', e => { e.preventDefault(); location.href = 'mailto:setayesh2007dehghani@gmail.com?subject=' + encodeURIComponent('Shoot request') + '&body=' + encodeURIComponent(msg()); });
-  $('#wa').addEventListener('click', () => window.open('https://wa.me/989139023307?text=' + encodeURIComponent(msg()), '_blank', 'noopener'));
+  // shot list -> one message, sent by DM, WhatsApp, SMS or email
+  const form = $('#shot'), toast = $('#toast');
+  const msg = () => {
+    const f = new FormData(form), fa = html.lang === 'fa', el = form.elements;
+    const L = fa ? ['درخواست عکاسی', 'نوع', 'تاریخ', 'شهر', 'نام', 'شماره', 'توضیحات'] : ['Shoot request', 'Type', 'Date', 'City', 'Name', 'Phone', 'Details'];
+    const c = city.value === 'other' ? f.get('other') : city.selectedOptions[0].text;
+    return `${L[0]} · SETĀ\n${L[1]}: ${el.namedItem('type').selectedOptions[0].text}\n${L[2]}: ${f.get('date') || '-'}\n${L[3]}: ${c}\n${L[4]}: ${f.get('name')}\n${L[5]}: ${f.get('phone')}\n\n${L[6]}:\n${f.get('note')}`;
+  };
+  const go = {
+    ig: m => { try { navigator.clipboard.writeText(m); } catch (e) {} toast.textContent = html.lang === 'fa' ? 'پیام کپی شد؛ توی دایرکت پیست کن و بفرست.' : 'Message copied. Paste it in the DM and send.'; window.open('https://ig.me/m/setayeshdehghani', '_blank', 'noopener'); },
+    wa: m => window.open('https://wa.me/989139023307?text=' + encodeURIComponent(m), '_blank', 'noopener'),
+    sms: m => { location.href = 'sms:+989139023307?&body=' + encodeURIComponent(m); },
+    mail: m => { location.href = 'mailto:setayesh2007dehghani@gmail.com?subject=' + encodeURIComponent('Shoot request') + '&body=' + encodeURIComponent(m); }
+  };
+  form.addEventListener('submit', e => e.preventDefault());
+  form.addEventListener('click', e => { const b = e.target.closest('[data-ch]'); if (b && form.reportValidity()) go[b.dataset.ch](msg()); });
 })();
 </script>
 </body>
